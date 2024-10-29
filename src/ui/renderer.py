@@ -3,25 +3,19 @@ from src.ui.selector import Selector
 
 
 class Renderer:
-    def __init__(self, screen_width, screen_height, field):
+    def __init__(self, width, height, surfaces):
         pg.init()
-        self.screen = pg.display.set_mode((screen_width, screen_height))
+        self.screen = pg.display.set_mode((width, height))
         pg.display.set_caption("2D RL Environment Builder")
-
-        self.screen_width = screen_width
-        self.screen_height = screen_height
-        self.field = field
-        self.selector = Selector(screen=self.screen)
-        self.field.init_screen(self.screen)
-
-    def render(self):
-        self.screen.fill((200, 200, 200))
-        self.selector.draw_selector()
-        self.field.draw_field()
-        pg.display.flip()
+        self.surfaces = surfaces
 
     def update(self):
-        self.render()
+        self.screen.fill((200, 200, 200))
+        for surface in self.surfaces:
+            obj, pos = surface["surface"], surface["position"]
+            obj.draw()
+            self.screen.blit(obj.surface, pos)
+        pg.display.flip()
 
     def close(self):
         pg.quit()
