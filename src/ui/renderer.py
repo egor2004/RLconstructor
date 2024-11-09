@@ -13,7 +13,7 @@ class Renderer:
         self.screen.fill((200, 200, 200))
         for surface in self.surfaces:
             obj, pos = surface["surface"], surface["position"]
-            obj.draw()
+            obj.render()
             self.screen.blit(obj.surface, pos)
         pg.display.flip()
 

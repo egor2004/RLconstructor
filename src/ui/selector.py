@@ -1,15 +1,15 @@
 import pygame as pg
 
 class Selector:
-    COLORS = ["white", "black", "gray", "yellow", "red"]
+    COLORS = ["white", "black", "gray", "yellow", "red", "purple"]
 
     def __init__(self):
-        self.width = 400
+        self.width = 480
         self.height = 80
         self.surface = pg.Surface((self.width, self.height))
         self.selected_item = 0
 
-    def draw(self):
+    def render(self):
         pg.draw.rect(self.surface,"black", (0, 0, self.width, self. width), border_radius=10)
         pg.draw.rect(self.surface, "white", (5, 5, self.width - 10, self.height - 10), border_radius=10)
         for i, color in enumerate(self.COLORS):
@@ -20,7 +20,7 @@ class Selector:
 
 
     def update(self, mouse_x, mouse_y):
-        for i in range(5):
+        for i in range(len(self.COLORS)):
             x1 = i * 82 + 10
             y1 = 10
             x2 = x1 + 50

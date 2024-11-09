@@ -1,19 +1,27 @@
-from ui.renderer import Renderer
-from ui.field import Field
-from ui.selector import Selector
-import pygame as pg
+from fontTools.merge.util import current_time
 
-field = Field(20, 40, 25)
+from ui.renderer import Renderer
+from ui.field_env import FieldEnv
+from ui.selector import Selector
+from agent.test import *
+import pygame as pg
+import time
+
+env = FieldEnv(70, 8, 8, margin=1)
 selector = Selector()
 
 surfaces = [
-    {"surface": field, "position": (30, 120)},
+    {"surface": env, "position": (30, 120)},
     {"surface": selector, "position": (30, 20)}
 ]
 renderer = Renderer(1024, 720, surfaces)
 
 fps = 60
 clock = pg.time.Clock()
+
+agent_moves_per_second = 2
+move_interval = 1.0 / agent_moves_per_second
+last_move_time = time.time()
 
 def mouse_click():
     # Обработка нажатий на элементы игрового поля и селектора
@@ -29,21 +37,36 @@ def mouse_click():
 
         loc_field_x = x - surfaces[0]["position"][0]
         loc_field_y = y - surfaces[0]["position"][1]
-        if (0 <= loc_field_x < field.width - field.margin and
-            0 <= loc_field_y < field.height - field.margin):
-            field.update(loc_field_x, loc_field_y, selector.selected_item)
+        if (0 <= loc_field_x < env.width - env.margin and
+            0 <= loc_field_y < env.height - env.margin):
+            env.update(loc_field_x, loc_field_y, selector.selected_item)
+
 
 def main_loop():
+    global last_move_time
     running = True
+    constructor = True
     while running:
         for event in pg.event.get():
             if event.type == pg.QUIT:
                 running = False
-        mouse_click()
+            if event.type == pg.KEYDOWN:
+                if event.key == pg.K_f:
+                    constructor = not constructor
+                if event.key == pg.K_r:
+                    env.reset()
+
+        if constructor == False:
+            current_time = time.time()
+            if current_time - last_move_time > move_interval:
+                env.step(env.action_space.sample())
+                last_move_time = current_time
+        else:
+            mouse_click()
         renderer.update()
         clock.tick(fps)
 
-    renderer.close()
+
 
 if __name__ == "__main__":
     main_loop()
