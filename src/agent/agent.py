@@ -5,7 +5,7 @@ from collections import deque
 import random
 
 # Параметры обучения
-NUM_EPISODES = 200
+NUM_EPISODES = 20
 BATCH_SIZE = 32
 GAMMA = 0.99
 EPSILON_START = 1.0

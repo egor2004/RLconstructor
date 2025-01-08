@@ -122,13 +122,13 @@ class FieldEnv(gym.Env):
         if self.field[new_pos[1]][new_pos[0]] == 4:  # Наказание
             reward = -5
         elif self.field[new_pos[1]][new_pos[0]] == 3:  # Награда
-            reward = 1000
+            reward = 100
             done = True
         elif self.field[new_pos[1]][new_pos[0]] == 5:  # Смерть
             reward = -10
             done = True
         elif self.field[new_pos[1]][new_pos[0]] == 0:  # Ход
-            reward = 0
+            reward = -1
 
         self.agent_pos = new_pos
 

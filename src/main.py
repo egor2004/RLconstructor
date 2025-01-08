@@ -32,6 +32,13 @@ def mouse_click():
     b1, b2, b3 = pg.mouse.get_pressed()
 
     if b1:
+        # Проверка клика по кнопке "Обучить"
+        loc_btn_x = x - surfaces[3]["position"][0]
+        loc_btn_y = y - surfaces[3]["position"][1]
+        if (0 <= loc_btn_x < btn.width and
+            0 <= loc_btn_y < btn.height):
+            train_start()
+
         loc_selector_x = x - surfaces[1]["position"][0]
         loc_selector_y = y - surfaces[1]["position"][1]
         if (0 <= loc_selector_x < selector.width and
@@ -73,9 +80,40 @@ def check_events():
 def train_start():
     global constructor
     env.remember_field()
+    update_training_params()
     trainModel()
     env.mem_reset()
     constructor = True
+
+# Глобальные переменные для обновления параметров
+NUM_EPISODES = 20
+BATCH_SIZE = 32
+GAMMA = 0.99
+EPSILON_START = 1.0
+EPSILON_MIN = 0.1
+EPSILON_DECAY = 0.995
+LEARNING_RATE = 0.001
+TARGET_UPDATE = 5
+
+def update_training_params():
+    global NUM_EPISODES, BATCH_SIZE, GAMMA, EPSILON_START, EPSILON_MIN, EPSILON_DECAY, LEARNING_RATE, TARGET_UPDATE
+    for param in slider.parameters:
+        if param["name"] == "NUM_EPISODES":
+            NUM_EPISODES = param["value"]
+        elif param["name"] == "BATCH_SIZE":
+            BATCH_SIZE = param["value"]
+        elif param["name"] == "GAMMA":
+            GAMMA = param["value"]
+        elif param["name"] == "EPSILON_START":
+            EPSILON_START = param["value"]
+        elif param["name"] == "EPSILON_MIN":
+            EPSILON_MIN = param["value"]
+        elif param["name"] == "EPSILON_DECAY":
+            EPSILON_DECAY = param["value"]
+        elif param["name"] == "LEARNING_RATE":
+            LEARNING_RATE = param["value"]
+        elif param["name"] == "TARGET_UPDATE":
+            TARGET_UPDATE = param["value"]
 
 running = True
 constructor = True
@@ -91,18 +129,44 @@ def main_loop():
         renderer.update()
         clock.tick(fps)
 
+def draw_moves(moves):
+    global env
+    env.mem_reset()
+    renderer.update()
+    last_move_time = time.time()
+    moves_per_second = 1
+    interval = 1.0/moves_per_second
+    i = 0
+    while i < len(moves):
+        check_events()
+        current_time = time.time()
+        if current_time - last_move_time >= interval:
+            last_move_time = current_time
+            next_state, reward, done = env.step(moves[i])
+            renderer.update()
+            i += 1
+    time.sleep(1)
+    env.mem_reset()
+    renderer.update()
+
+
+
 
 def trainModel():
     global env
     agent = Agent(env.field_size_x, 4)
+    best_moves = []
+    best_reward = -1000000000
     for episode in range (NUM_EPISODES):
         env.mem_reset()
         state = env.state
         total_reward = 0
         done = False
-
+        epis_moves = []
         while not done:
+            check_events()
             action = agent.act(state)
+            epis_moves.append(action)
             next_state, reward, done = env.step(action)
             agent.remember(state, action, reward, next_state, done)
             agent.replay()
@@ -112,30 +176,20 @@ def trainModel():
         if episode % TARGET_UPDATE == 0:
             agent.update_target()
 
+        if total_reward > best_reward:
+            best_reward = total_reward
+            best_moves = epis_moves.copy()
+
+        if (episode+1) % 5 == 0:
+            print("Вывод лучшего хода")
+            draw_moves(best_moves)
+
         agent.epsilon = max(EPSILON_MIN, agent.epsilon * EPSILON_DECAY)
         print(f"Episode {episode + 1}, Total Reward: {total_reward}")
 
-    print("Training complete.")
+    print(f"Training complete. Best reward: {best_reward}")
 
-    env.mem_reset()
-    state = env.state
-    done = False
-    renderer.update()
-    last_move_time = time.time()
-    agent_moves_per_second = 1
-    move_interval = 1.0 / agent_moves_per_second
-    total_reward = 0
-    while not done:
-        correct_time = time.time()
-        if correct_time - last_move_time >= move_interval:
-            last_move_time = correct_time
-            action = torch.argmax(agent.target_model(state)).item()
-            next_state, reward, done = env.step(action)
-            state = next_state
-            renderer.update()
-            total_reward += reward
-
-    print(f"Итоговая оценка: {total_reward}")
+    draw_moves(best_moves)
 
 
 
