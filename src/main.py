@@ -1,27 +1,30 @@
-from fontTools.merge.util import current_time
-
 from ui.renderer import Renderer
-from ui.field_env import FieldEnv
+from src.environment.field_env import FieldEnv
 from ui.selector import Selector
-from agent.test import *
+from agent.agent import *
+from ui.slider import Slider
+from ui.btn import Button
 import pygame as pg
 import time
 
-env = FieldEnv(70, 8, 8, margin=1)
+pg.init()
+
+env = FieldEnv(95, 5, 5, margin=1)
 selector = Selector()
+slider = Slider()
+btn = Button(0, 0, 200, 50, "Обучить", pg.font.Font(None, 36), (150, 150, 150), (0,0,0))
 
 surfaces = [
     {"surface": env, "position": (30, 120)},
-    {"surface": selector, "position": (30, 20)}
+    {"surface": selector, "position": (30, 20)},
+    {"surface": slider, "position": (600, 120)},
+    {"surface": btn, "position": (670, 470)},
 ]
-renderer = Renderer(1024, 720, surfaces)
+renderer = Renderer(1024, 640, surfaces)
 
 fps = 60
 clock = pg.time.Clock()
 
-agent_moves_per_second = 2
-move_interval = 1.0 / agent_moves_per_second
-last_move_time = time.time()
 
 def mouse_click():
     # Обработка нажатий на элементы игрового поля и селектора
@@ -41,32 +44,101 @@ def mouse_click():
             0 <= loc_field_y < env.height - env.margin):
             env.update(loc_field_x, loc_field_y, selector.selected_item)
 
+        loc_slider_x = x - surfaces[2]["position"][0]
+        loc_slider_y = y - surfaces[2]["position"][1]
+        if (0 <= loc_slider_x < slider.width and
+                0 <= loc_slider_y < slider.height):
+            slider.update(loc_slider_x, loc_slider_y, is_dragging=True)
+            slider.selected_slider = None
 
-def main_loop():
-    global last_move_time
-    running = True
+
+
+
+def check_events():
+    global constructor
+    global running
+    for event in pg.event.get():
+        if event.type == pg.QUIT:
+            pg.quit()
+            running = False
+        if event.type == pg.KEYDOWN:
+            if event.key == pg.K_f:
+                constructor = not constructor
+            if event.key == pg.K_r:
+                env.reset()
+            if event.key == pg.K_s:
+                print("Карта сохранена")
+                env.remember_field()
+
+def train_start():
+    global constructor
+    env.remember_field()
+    trainModel()
+    env.mem_reset()
     constructor = True
+
+running = True
+constructor = True
+def main_loop():
+    global constructor
     while running:
-        for event in pg.event.get():
-            if event.type == pg.QUIT:
-                running = False
-            if event.type == pg.KEYDOWN:
-                if event.key == pg.K_f:
-                    constructor = not constructor
-                if event.key == pg.K_r:
-                    env.reset()
+        check_events()
 
         if constructor == False:
-            current_time = time.time()
-            if current_time - last_move_time > move_interval:
-                env.step(env.action_space.sample())
-                last_move_time = current_time
+            train_start()
         else:
             mouse_click()
         renderer.update()
         clock.tick(fps)
 
 
+def trainModel():
+    global env
+    agent = Agent(env.field_size_x, 4)
+    for episode in range (NUM_EPISODES):
+        env.mem_reset()
+        state = env.state
+        total_reward = 0
+        done = False
+
+        while not done:
+            action = agent.act(state)
+            next_state, reward, done = env.step(action)
+            agent.remember(state, action, reward, next_state, done)
+            agent.replay()
+            state = next_state
+            total_reward += reward
+
+        if episode % TARGET_UPDATE == 0:
+            agent.update_target()
+
+        agent.epsilon = max(EPSILON_MIN, agent.epsilon * EPSILON_DECAY)
+        print(f"Episode {episode + 1}, Total Reward: {total_reward}")
+
+    print("Training complete.")
+
+    env.mem_reset()
+    state = env.state
+    done = False
+    renderer.update()
+    last_move_time = time.time()
+    agent_moves_per_second = 1
+    move_interval = 1.0 / agent_moves_per_second
+    total_reward = 0
+    while not done:
+        correct_time = time.time()
+        if correct_time - last_move_time >= move_interval:
+            last_move_time = correct_time
+            action = torch.argmax(agent.target_model(state)).item()
+            next_state, reward, done = env.step(action)
+            state = next_state
+            renderer.update()
+            total_reward += reward
+
+    print(f"Итоговая оценка: {total_reward}")
+
+
 
 if __name__ == "__main__":
     main_loop()
+

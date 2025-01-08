@@ -1,10 +1,8 @@
 import pygame as pg
-from src.ui.selector import Selector
 
 
 class Renderer:
     def __init__(self, width, height, surfaces):
-        pg.init()
         self.screen = pg.display.set_mode((width, height))
         pg.display.set_caption("2D RL Environment Builder")
         self.surfaces = surfaces
